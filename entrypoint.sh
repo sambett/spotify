@@ -56,6 +56,14 @@ else
 fi
 echo ""
 
+# Install ML dependencies if not already installed
+if ! python -c "import numpy" 2>/dev/null; then
+    echo "📦 Installing ML dependencies (numpy, scikit-learn, pandas, matplotlib, seaborn)..."
+    pip install --no-cache-dir -q numpy==1.24.4 scikit-learn==1.3.2 pandas==2.0.3 matplotlib==3.7.5 seaborn==0.13.0
+    echo "✅ ML dependencies installed"
+    echo ""
+fi
+
 echo "================================================"
 echo "🚀 Starting application..."
 echo "================================================"

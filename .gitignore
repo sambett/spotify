@@ -2,30 +2,70 @@
 __pycache__/
 *.py[cod]
 *.pyc
+*.pyo
 
 # Environment & Secrets
 .env
+.env.local
+.env.production
 *.json
+!package.json
 data/.spotify_tokens.json
 data/.tokens/
 
-# Data directories
+# Data directories (all layers)
 data/bronze/
+data/silver/
+data/gold/
 data/logs/
-data/kaggle/dataset.csv
+data/trino/
+data/kaggle/*.csv
+
+# Superset
+superset/superset.db
+superset/superset.db-*
+superset/*.db
+superset/*.db-*
+
+# Docker volumes
+postgres-data/
+redis-data/
 
 # IDE
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
 desktop.ini
+*.bak
 
 # Logs
 *.log
+logs/
 
-# PowerShell (problematic on Windows)
-schedule_ingestion.ps1
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# PDF documentation (large files)
+*.pdf
+
+# Old/deprecated documentation
+DEPLOYMENT_GUIDE.md
+DATA_STATUS_EXPLAINED.md
+QUICK_START_GUIDE.md
+ERROR_FIXED.md
+FIX_403_AUDIO_FEATURES.md
+
+# Windows batch files (use Docker instead)
+*.bat
+*.ps1
+
+# Claude Code
+.claude/

@@ -1,6 +1,10 @@
 version: '3.8'
 
 services:
+  # ============================================================================
+  # DATA INGESTION & PROCESSING (Spark + Delta Lake)
+  # ============================================================================
+
   # Scheduled data ingestion service (runs every 6 hours)
   spotify-scheduler:
     build:
@@ -14,6 +18,8 @@ services:
       - CLIENT_SECRET=${CLIENT_SECRET}
       - REDIRECT_URI=${REDIRECT_URI:-http://127.0.0.1:8888/callback}
       - BRONZE_PATH=/app/data/bronze
+      - SILVER_PATH=/app/data/silver
+      - GOLD_PATH=/app/data/gold
       - KAGGLE_CSV=/app/data/kaggle/dataset.csv
       - TOKEN_PATH=/app/data/.spotify_tokens.json
       - SPARK_MASTER=local[*]
@@ -30,6 +36,7 @@ services:
       - ./mappers:/app/mappers
       - ./schemas:/app/schemas
       - ./scripts:/app/scripts
+      - ./gold:/app/gold
       - ./utils:/app/utils
       - ./writers:/app/writers
       - ./run_ingestion.py:/app/run_ingestion.py
@@ -52,6 +59,8 @@ services:
       - CLIENT_SECRET=${CLIENT_SECRET}
       - REDIRECT_URI=${REDIRECT_URI:-http://127.0.0.1:8888/callback}
       - BRONZE_PATH=/app/data/bronze
+      - SILVER_PATH=/app/data/silver
+      - GOLD_PATH=/app/data/gold
       - KAGGLE_CSV=/app/data/kaggle/dataset.csv
       - TOKEN_PATH=/app/data/.spotify_tokens.json
       - SPARK_MASTER=local[*]
@@ -68,6 +77,7 @@ services:
       - ./mappers:/app/mappers
       - ./schemas:/app/schemas
       - ./scripts:/app/scripts
+      - ./gold:/app/gold
       - ./utils:/app/utils
       - ./writers:/app/writers
       - ./run_ingestion.py:/app/run_ingestion.py
@@ -79,6 +89,127 @@ services:
     memswap_limit: 6g
     profiles:
       - manual  # Only runs when explicitly called
+
+  # ============================================================================
+  # QUERY LAYER (Trino for SQL-based analytics)
+  # ============================================================================
+
+  trino:
+    image: trinodb/trino:435
+    container_name: trino
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./trino/catalog:/etc/trino/catalog
+      - ./data:/data
+    networks:
+      - spotify-network
+    environment:
+      - TRINO_ENVIRONMENT=production
+    mem_limit: 4g
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ============================================================================
+  # VISUALIZATION (Apache Superset)
+  # ============================================================================
+
+  # PostgreSQL for Superset metadata
+  postgres:
+    image: postgres:15
+    container_name: superset-postgres
+    environment:
+      - POSTGRES_DB=superset
+      - POSTGRES_USER=superset
+      - POSTGRES_PASSWORD=superset
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - spotify-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superset"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Superset caching
+  redis:
+    image: redis:7-alpine
+    container_name: superset-redis
+    networks:
+      - spotify-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Apache Superset
+  superset:
+    image: apache/superset:3.0.0
+    container_name: superset
+    environment:
+      - SUPERSET_SECRET_KEY=your_secret_key_here_change_in_production
+      - SUPERSET_LOAD_EXAMPLES=no
+      - DATABASE_DB=superset
+      - DATABASE_HOST=postgres
+      - DATABASE_PASSWORD=superset
+      - DATABASE_USER=superset
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./superset:/app/superset_home
+      - ./data:/data
+    networks:
+      - spotify-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      trino:
+        condition: service_healthy
+    command: >
+      bash -c "
+      superset db upgrade &&
+      superset fab create-admin --username admin --firstname Admin --lastname User --email admin@superset.com --password admin &&
+      superset init &&
+      /usr/bin/run-server.sh
+      "
+    mem_limit: 4g
+
+  # ============================================================================
+  # MACHINE LEARNING (Optional: Separate ML container)
+  # ============================================================================
+
+  ml-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml
+    container_name: ml-service
+    environment:
+      - BRONZE_PATH=/app/data/bronze
+      - SILVER_PATH=/app/data/silver
+      - GOLD_PATH=/app/data/gold
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./data:/app/data
+      - ./gold:/app/gold
+      - ./ml_models:/app/ml_models
+    networks:
+      - spotify-network
+    mem_limit: 4g
+    profiles:
+      - ml  # Only runs when explicitly called
+
+volumes:
+  postgres-data:
+    driver: local
 
 networks:
   spotify-network:

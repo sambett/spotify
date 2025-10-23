@@ -213,9 +213,10 @@ def main():
     logger.info(f"Limit: {args.limit if args.limit else 'None (process all)'}")
     logger.info("=" * 80)
 
-    # Initialize Spark
+    # Initialize Spark with Delta Lake support
     spark = SparkSession.builder \
         .appName("SyntheticAudioFeatures") \
+        .config("spark.jars.packages", "io.delta:delta-spark_2.12:3.2.1") \
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
         .getOrCreate()
