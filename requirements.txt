@@ -1,0 +1,18 @@
+# Spotify Analytics Pipeline - Python Dependencies
+
+# Environment & Configuration
+python-dotenv==1.0.1          # Load environment variables from .env file
+
+# HTTP Requests & API Communication
+requests==2.32.4              # HTTP library for Spotify API calls
+urllib3==2.2.3                # HTTP client (dependency of requests)
+
+# SSL/TLS for HTTPS callback server
+cryptography==43.0.0          # Generate self-signed certificates for localhost HTTPS
+
+# Note: PySpark is pre-installed in apache/spark:3.5.3 image
+# No need to install it via pip - use spark-submit instead
+
+# Future dependencies (uncomment when needed):
+# pandas==2.0.3               # Data manipulation (if needed outside Spark)
+# retry==0.9.2                # Retry logic decorator (alternative to custom retry)

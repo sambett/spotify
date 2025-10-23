@@ -1,0 +1,36 @@
+# Git
+.git/
+.gitignore
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Data (mounted as volumes)
+data/bronze/
+data/logs/
+data/.tokens/
+data/.spotify_tokens.json
+
+# Documentation
+*.md
+!README.md
+
+# Windows scripts
+*.ps1
+*.bat

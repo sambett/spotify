@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  spotify-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spotify-analytics
+    environment:
+      # Spotify API credentials (from .env file)
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
+      - REDIRECT_URI=${REDIRECT_URI:-http://127.0.0.1:8888/callback}
+      # Path configurations
+      - BRONZE_PATH=/app/data/bronze
+      - KAGGLE_CSV=/app/data/kaggle/dataset.csv
+      - TOKEN_PATH=/app/data/.spotify_tokens.json
+      # Spark configurations
+      - SPARK_MASTER=local[*]
+      - SPARK_DRIVER_MEMORY=2g
+      - SPARK_EXECUTOR_MEMORY=2g
+    volumes:
+      # Mount data directory for persistence
+      - ./data:/app/data
+      # Mount source code for development
+      - ./clients:/app/clients
+      - ./config:/app/config
+      - ./loaders:/app/loaders
+      - ./mappers:/app/mappers
+      - ./schemas:/app/schemas
+      - ./utils:/app/utils
+      - ./writers:/app/writers
+      - ./run_ingestion.py:/app/run_ingestion.py
+    ports:
+      # OAuth callback port
+      - "8888:8888"
+    networks:
+      - spotify-network
+
+networks:
+  spotify-network:
+    driver: bridge
