@@ -121,18 +121,32 @@ class KaggleMapper:
     def generate_track_ids(df: DataFrame) -> DataFrame:
         """
         Generate stable track IDs if missing.
-        
+
         Uses hash of track_name + artists + album_name for stability.
-        
+
         Args:
             df: Input DataFrame
-        
+
         Returns:
             DataFrame with track_id column
         """
-        if 'track_id' not in df.columns or df.filter(F.col('track_id').isNull()).count() > 0:
-            logger.info("Generating missing track IDs from track metadata...")
-            
+        if 'track_id' not in df.columns:
+            logger.info("track_id column missing, generating from track metadata...")
+
+            df = df.withColumn(
+                'track_id',
+                F.md5(
+                    F.concat_ws(
+                        '|',
+                        F.coalesce(F.col('track_name'), F.lit('')),
+                        F.coalesce(F.col('artists'), F.lit('')),
+                        F.coalesce(F.col('album_name'), F.lit(''))
+                    )
+                )
+            )
+        else:
+            # Fill NULL track_ids if any exist (avoid count() to prevent crashes)
+            logger.info("Generating track IDs for any NULL values...")
             df = df.withColumn(
                 'track_id',
                 F.when(
@@ -147,7 +161,7 @@ class KaggleMapper:
                     )
                 ).otherwise(F.col('track_id'))
             )
-        
+
         return df
     
     @staticmethod
@@ -166,37 +180,35 @@ class KaggleMapper:
     def map_to_bronze_schema(self, df: DataFrame) -> DataFrame:
         """
         Map Kaggle DataFrame to kaggle_tracks_bronze schema.
-        
+
         Complete transformation pipeline:
         1. Normalize column names
         2. Generate track IDs if missing
         3. Cast to correct types
         4. Select only schema columns
         5. Add ingestion timestamp
-        
+
         Args:
             df: Input DataFrame from Kaggle CSV
-        
+
         Returns:
             DataFrame conforming to kaggle_tracks_bronze schema
         """
         logger.info("Mapping Kaggle data to Bronze schema...")
-        
-        initial_count = df.count()
-        
+
         # 1. Normalize column names
         df = self.normalize_column_names(df)
-        
+
         # 2. Generate track IDs if needed
         df = self.generate_track_ids(df)
-        
+
         # 3. Cast to correct types
         df = self.cast_to_schema_types(df)
-        
+
         # 4. Get target schema fields
         schema = get_kaggle_tracks_schema()
         target_fields = [field.name for field in schema.fields if field.name != '_ingested_at']
-        
+
         # Select available fields, adding NULL for missing ones
         select_exprs = []
         for field in target_fields:
@@ -205,14 +217,12 @@ class KaggleMapper:
             else:
                 logger.debug(f"Adding NULL column for missing field: {field}")
                 select_exprs.append(F.lit(None).alias(field))
-        
+
         df = df.select(select_exprs)
-        
+
         # 5. Add ingestion timestamp
         df = self.add_ingestion_timestamp(df)
-        
-        # Log transformation summary
-        final_count = df.count()
-        logger.info(f"✅ Mapped {final_count:,}/{initial_count:,} rows to Bronze schema")
-        
+
+        logger.info("✅ Mapped Kaggle data to Bronze schema")
+
         return df

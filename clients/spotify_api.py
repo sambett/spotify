@@ -7,7 +7,7 @@ import time
 from typing import List, Dict, Any, Optional
 
 from config import AppConfig
-from clients.spotify_auth import SpotifyAuthClient
+from clients.auth.spotify_auth import SpotifyAuthClient
 from utils import setup_logger
 
 
