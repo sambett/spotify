@@ -1,0 +1,4 @@
+mae,model_name,model_type,r2,rmse,accuracy,f1
+0.0464467500735573,mood_prediction,RandomForestRegressor,0.8354817505990538,0.061503812762815,,
+0.1563393643971917,energy_forecast,LinearRegression,0.08084924820874873,0.19041159650493597,,
+,mood_classifier,RandomForestClassifier,,,0.9782608695652174,0.978057292631825

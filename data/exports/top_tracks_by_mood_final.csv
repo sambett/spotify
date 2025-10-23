@@ -1,0 +1,59 @@
+track_id,track_name,artist_name,mood_category,valence,energy,danceability,tempo,play_count,rank_in_category
+3vNFsxBbA4dPkymPF5Jm1b,This Mess We're In,PJ Harvey,Happy_Calm,0.6491,0.244,0.3633,65.4691,48,1
+2sIbHjfJ3nbMXNz4w03fWv,Eye In The Sky,The Alan Parsons Project,Happy_Calm,0.6698,0.3662,0.3955,118.9399,14,2
+0IVkP59yJ9GFF6B7IrvrxA,Paper Bag,Fiona Apple,Happy_Calm,0.6261,0.1531,0.4813,79.9208,12,3
+7KBOqpM6DffK0bcEatfBl3,Henry Lee - feat. PJ Harvey - 2011 Remaster,Nick Cave & The Bad Seeds,Happy_Energetic,0.7032,0.7469,0.4802,70.3606,28,1
+6ghNO6ocuH1pQFvlp0XTu6,Rising,Lhasa De Sela,Happy_Energetic,0.7419,0.7118,0.3539,114.3218,27,2
+5LQQGJjthbR2JIFQUF9CwK,But You,Alexandra Savior,Happy_Energetic,0.6642,0.8745,0.6141,79.6041,27,3
+6624hZJ0nRh0ve2SelMXVw,Over,Portishead,Happy_Energetic,0.7762,0.6947,0.3593,96.8972,15,4
+5V25JNAs17PQ3dJfmMIqSG,Wild Time,Weyes Blood,Happy_Energetic,0.7811,0.7375,0.4299,84.9177,2,5
+0wzThSEGQOnrGtFnyxGSMZ,Angela,Flower Face,Neutral,0.491,0.7303,0.6873,103.7828,81,1
+5PzWVmfzu7rePAuFkxPQf0,Repeat Until Death,Novo Amor,Neutral,0.5547,0.7241,0.6001,99.7077,54,2
+3siwsiaEoU4Kuuc9WKMUy5,No One Noticed,The Marías,Neutral,0.4288,0.4875,0.4283,158.2012,54,3
+5GbVzc6Ex5LYlLJqzRQhuy,Mystery of Love,Sufjan Stevens,Neutral,0.5163,0.5704,0.4535,129.6538,54,4
+67Hna13dNDkZvBpTXRIaOJ,Teardrop,Massive Attack,Neutral,0.5516,0.8465,0.7081,132.2258,38,5
+0PSxgms5q4pEtRGXRw2oWK,Chimacum Rain,Linda Perhacs,Neutral,0.6042,0.4328,0.5633,123.0395,27,6
+193Dm5SqYy3hTSbuzxbwKc,Writer In The Dark,Lorde,Neutral,0.4173,0.4418,0.3762,137.4456,27,7
+3N2UhXZI4Gf64Ku3cCjz2g,Inertia Creeps,Massive Attack,Neutral,0.4694,0.349,0.6548,68.6232,27,8
+7jLyxBaU1KJvkTXGq7kpha,She's My Baby,Mazzy Star,Neutral,0.456,0.5291,0.3796,127.4581,27,9
+4IRHwIZHzlHT1FQpRa5RdE,Goodbye Yellow Brick Road - Remastered 2014,Elton John,Neutral,0.55,0.6551,0.6567,137.3647,27,10
+0K9iwmos5IKhO7kK4sQJwl,Suzanne,Hope Sandoval & The Warm Inventions,Neutral,0.4893,0.5082,0.6485,72.3977,27,11
+6f4itfvWzS59Qu7JWorhxn,Movies,Weyes Blood,Neutral,0.2225,0.5425,0.2001,140.4559,27,12
+4UFQBhIOgANiBG44USIgsf,Army Of Me,Björk,Neutral,0.5826,0.4285,0.3667,146.2479,27,13
+6Lq6haqwKOJ2OiqsFwhnIE,Soft Currents,Alexandra Savior,Neutral,0.6225,0.4956,0.4925,99.9646,27,14
+5bjw4SaUSBIwFg6RE68Rb0,One More Cup Of Coffee,Frazey Ford,Neutral,0.4798,0.5617,0.674,95.1756,27,15
+0Lk26xqi8iVmzlXFVb8H3u,Sparrow,Basia Bulat,Neutral,0.4506,0.6746,0.8037,104.2735,27,16
+3cPTpaRo0EDjnjM0OUVmmY,Kaleidoscope,Flower Face,Neutral,0.4489,0.3969,0.3112,103.496,27,17
+4pteEcX2rHSJXK8XSOtWP8,To Love,Suki Waterhouse,Neutral,0.5652,0.8083,0.5324,113.8722,27,18
+1B62o4CbdL9ckGvwsz2cgn,Where's My Love,SYML,Neutral,0.1913,0.5621,0.7677,110.1128,27,19
+7xQg5QTx8eiQnsxEnfynPh,I Lied (with Allison Ponthier),Lord Huron,Neutral,0.5278,0.6342,0.319,166.846,27,20
+0ElpbbncWT9aS7mgoqEHbQ,Where's My Love - Acoustic,SYML,Neutral,0.5208,0.5244,0.527,148.4024,27,21
+3uCkIqD0VzQUijbs8WIizs,These Days,Nico,Neutral,0.4565,0.3502,0.7099,143.0418,26,22
+5nVE45ithgyVocZp5XLAk6,The Bug Collector,Haley Heynderickx,Neutral,0.4488,0.3899,0.7389,147.0161,25,23
+6XfxmT5QNCXvpZA6PKfWVL,Sorry Seems To Be The Hardest Word,Elton John,Neutral,0.778,0.4669,0.6751,109.8306,22,24
+6vTtCOimcPs5H1Jr9d0Aep,Sour Times,Portishead,Neutral,0.7767,0.4524,0.6387,167.2144,21,25
+51EMSRpNm9Rg5rGViVCczv,Andromeda,Weyes Blood,Neutral,0.5679,0.6903,0.4815,129.5606,20,26
+2VYqgye3Wf9ySE4qYM3iJn,Everyday,Weyes Blood,Neutral,0.5868,0.6263,0.2072,82.2191,16,27
+4oNOJ3UfDgkLeo8tQu9LSD,Butterfly Mornings,Hope Sandoval & The Warm Inventions,Neutral,0.4242,0.6027,0.6641,98.3681,13,28
+3D9iV6cYkYJRAPFO6DRKIE,Jealous Guy - Remastered 2010,John Lennon,Neutral,0.5163,0.291,0.2421,94.3191,10,29
+02sUxBm04Qei5tXuQhzWhu,Maybe Love,Weyes Blood,Neutral,0.6658,0.465,0.7421,121.0482,9,30
+7rUJX9xP2YcL62uJvtaeJd,Paradis Perdus,Christine and the Queens,Neutral,0.6439,0.4798,0.7143,155.8213,8,31
+1iTqAwKFKNRTcZX9Mtl1PZ,Jóga,Björk,Neutral,0.2448,0.5913,0.7204,160.6261,7,32
+3Z9bMAaCLvkcvkUealsvXB,Fuzzy,Grant Lee Buffalo,Neutral,0.25,0.4827,0.2627,103.4415,5,33
+48mJX8glOrQkrSdVBjc0Wb,Down By The Water,PJ Harvey,Neutral,0.4595,0.5629,0.5505,95.1301,4,34
+0pJW1Xw3aY4Eh6k5iuBkfI,I Know The End,Phoebe Bridgers,Neutral,0.5084,0.2821,0.3793,95.5145,3,35
+6ZQgooEk8PvsLxedYaT6Oa,Across the Universe,Fiona Apple,Neutral,0.2131,0.481,0.4825,143.4121,1,36
+2MfwT3SKUyF0na2LCa2fCp,Cornflower Blue,Flower Face,Sad_Calm,0.2463,0.1084,0.6847,107.3115,54,1
+6Kkt27YmFyIFrcX3QXFi2o,Liability,Lorde,Sad_Calm,0.3491,0.3073,0.4367,82.4329,35,2
+2RaUxxkie3gGE385mTEODv,Claude's Girl,Marika Hackman,Sad_Calm,0.2657,0.1804,0.4505,147.238,27,3
+3fHDbOrSf2IQhLeKaShLS4,Fuel to Fire,Agnes Obel,Sad_Calm,0.2403,0.3906,0.3858,97.8629,27,4
+4TthBhm7wJjM5wiwGr8qCu,Let Me Follow,Son Lux,Sad_Calm,0.2942,0.3089,0.4791,121.3729,27,5
+5PjdC2gMATetx5xdnwGUu7,i wanna be your girlfriend,girl in red,Sad_Calm,0.1951,0.2053,0.3106,64.6912,27,6
+7nDXmx3FuyeX7FI7PFl2iX,The Wisp Sings,Winter Aid,Sad_Calm,0.2662,0.3627,0.3807,125.7603,27,7
+54rOvFIQHqhv0sf71A4NpJ,Coolest Place in the World,Suki Waterhouse,Sad_Calm,0.35,0.152,0.4219,100.9605,23,8
+1ujxjsoNvh4XgS2fUNwkZ2,Space Song,Beach House,Sad_Energetic,0.2752,0.7763,0.4344,77.2373,56,1
+4k7x3QKrc3h3U0Viqk0uop,Rosyln,Bon Iver,Sad_Energetic,0.392,0.6375,0.1899,129.9812,54,2
+5qspeKX1xBacLJMm2t3Yc0,A Lot's Gonna Change,Weyes Blood,Sad_Energetic,0.3956,0.6552,0.4874,156.5771,27,3
+3W7KHojYGgYaoX9ogKO9hU,Nothing's Gonna Hurt You Baby,Cigarettes After Sex,Sad_Energetic,0.2894,0.6931,0.2855,85.9349,27,4
+1XXnKGbxitQMuOuzEoWKtj,The Dancer,PJ Harvey,Sad_Energetic,0.3718,0.6222,0.4658,110.2149,11,5
+541K13dlLhVLtuTQEllJSE,Sets The Blaze,Hope Sandoval & The Warm Inventions,Sad_Energetic,0.3554,0.7931,0.6685,133.5859,6,6

@@ -1,0 +1,9 @@
+{
+  "writerVersion" : "435",
+  "location" : "/app/data",
+  "ownerName" : "trino",
+  "ownerType" : "USER",
+  "parameters" : {
+    "trino_query_id" : "20251023_222303_00004_t8cnb"
+  }
+}
