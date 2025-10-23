@@ -1,57 +1,180 @@
-# 🎵 Spotify Analytics Pipeline - Complete Setup
+# 🎵 Spotify Analytics Pipeline
 
-## 🎯 Quick Start (3 Steps - 10 Minutes)
+A production-grade data pipeline for analyzing Spotify listening history and mental wellbeing patterns.
 
-### 1. Install Dependencies
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker & Docker Compose
+- Spotify Developer Account ([Get one here](https://developer.spotify.com/dashboard))
+
+### 1. Clone & Configure
+
 ```bash
 cd C:\Users\SelmaB\Desktop\spotify
-pip install pyspark delta-spark python-dotenv requests cryptography
+
+# Create .env file with your Spotify credentials
+echo "CLIENT_ID=your_client_id_here" >> .env
+echo "CLIENT_SECRET=your_client_secret_here" >> .env
+echo "REDIRECT_URI=http://127.0.0.1:8888/callback" >> .env
 ```
 
-### 2. Verify Setup
+### 2. First Run (Authentication)
+
 ```bash
-python preflight_check.py
+# Build Docker image
+docker-compose build
+
+# Run pipeline once to authenticate
+docker-compose run --rm spotify-pipeline python3 run_ingestion.py
 ```
 
-### 3. Run First Time (Authenticate)
+This opens a browser for Spotify OAuth, saves your token, and fetches your first data batch.
+
+### 3. Start Automated Collection
+
 ```bash
-python run_ingestion.py
+# Start scheduler (runs every 6 hours automatically)
+docker-compose up -d spotify-scheduler
+
+# View logs
+docker logs -f spotify-scheduler
 ```
-Opens browser for Spotify OAuth → Saves token → Fetches your data!
+
+**That's it!** Your pipeline now collects data every 6 hours automatically.
 
 ---
 
-## ⏰ Schedule for 11 PM Daily
+## 📊 What Data Gets Collected
 
-**PowerShell (as Administrator):**
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
-.\schedule_ingestion.ps1
+### Bronze Layer (Raw Data)
+
+```
+data/bronze/
+├── listening_history_bronze/              # Your Spotify plays
+│   ├── track_id, played_at, track_name
+│   ├── artist_name, album_name, duration_ms
+│   └── Partitioned by date
+│
+├── my_tracks_features_bronze/             # Track metadata + audio features
+│   ├── track_id, track_name, artist_name
+│   ├── popularity, duration_ms, explicit
+│   └── danceability, energy, valence, acousticness, etc.
+│
+├── my_tracks_features_bronze_synthetic/   # 🆕 Synthetic audio features
+│   ├── Generated deterministically per track_id
+│   ├── Used when real features unavailable (403 error)
+│   └── source='synthetic' flag for provenance tracking
+│
+└── kaggle_tracks_bronze/                  # Reference catalog (114K tracks)
+    ├── All fields from above
+    └── track_genre included
 ```
 
-**Test immediately:**
-```powershell
-Start-ScheduledTask -TaskName "SpotifyDataIngestion"
-```
+### Audio Features for Mental Health Analysis
+
+All tables include these mood-related features:
+
+| Feature | Range | Mental Health Indicator |
+|---------|-------|------------------------|
+| `valence` | 0-1 | Musical positiveness (happiness) |
+| `energy` | 0-1 | Intensity and activity level |
+| `acousticness` | 0-1 | Acoustic vs electronic preference |
+| `danceability` | 0-1 | Rhythmic engagement |
+| `instrumentalness` | 0-1 | Vocal vs instrumental preference |
+| `tempo` | 60-180 | Preferred pace (BPM) |
 
 ---
 
-## 📊 What Gets Fetched
+## 🆕 Synthetic Audio Features System
 
-### 1. Listening History
-- Recently played tracks (up to 1,000)
-- Play timestamps
-- Track/artist/album names
+Due to Spotify API 403 errors on `/v1/audio-features`, the pipeline includes an intelligent fallback system:
 
-### 2. Audio Features (for Mood Analysis!)
-- `valence` (0-1) - Musical happiness
-- `energy` (0-1) - Intensity level
-- `danceability` (0-1) - Dance suitability
-- `acousticness`, `tempo`, `loudness`, etc.
+### How It Works
 
-### 3. Kaggle Dataset (Optional)
-- ~100K tracks for recommendations
-- Place CSV at: `data/kaggle/dataset.csv`
+1. **Deterministic Generation**: Hash-based seeding ensures reproducible features per track_id
+2. **Automatic Population**: Runs after each ingestion to fill gaps
+3. **Smart Preference**: Silver layer prefers real > synthetic > Kaggle
+4. **Kill-Switch**: `ALLOW_SYNTHETIC=true/false` environment toggle
+
+### Enable/Disable
+
+```bash
+# Enable synthetic features (default, recommended for development)
+export ALLOW_SYNTHETIC=true
+docker-compose up -d spotify-scheduler
+
+# Disable synthetic features (when API is fixed)
+export ALLOW_SYNTHETIC=false
+docker-compose up -d spotify-scheduler
+```
+
+### Manual Generation
+
+```bash
+# Generate synthetic features for all tracks
+docker-compose run --rm spotify-pipeline \
+  python3 scripts/generate_synthetic_audio_features.py
+
+# Populate only missing features
+docker-compose run --rm spotify-pipeline \
+  python3 scripts/populate_missing_features.py
+```
+
+**📖 Full Documentation**: See [SYNTHETIC_FEATURES_GUIDE.md](./SYNTHETIC_FEATURES_GUIDE.md)
+
+---
+
+## 🏗️ Architecture
+
+### Medallion Architecture (Bronze → Silver → Gold)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      DATA SOURCES                           │
+├─────────────────────────────────────────────────────────────┤
+│  Spotify API          Kaggle Dataset    Synthetic Generator │
+│  (listening history)  (114K tracks)     (deterministic)     │
+└────────┬──────────────────┬───────────────────┬─────────────┘
+         │                  │                   │
+         ▼                  ▼                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    BRONZE LAYER (Raw)                       │
+├─────────────────────────────────────────────────────────────┤
+│  • listening_history_bronze                                 │
+│  • my_tracks_features_bronze                                │
+│  • my_tracks_features_bronze_synthetic (🆕)                 │
+│  • kaggle_tracks_bronze                                     │
+└────────────────────────────┬────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  SILVER LAYER (Enriched)                    │
+├─────────────────────────────────────────────────────────────┤
+│  • listening_with_features (joins all sources)              │
+│  • Feature preference: real > synthetic > Kaggle            │
+│  • Time dimensions: hour_of_day, part_of_day, is_weekend    │
+│  • Data provenance: feature_source column                   │
+└────────────────────────────┬────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   GOLD LAYER (Analytics)                    │
+├─────────────────────────────────────────────────────────────┤
+│  • mood_clusters (K-means on audio features)                │
+│  • wellbeing_indicators (calculated metrics)                │
+│  • track_recommendations (similarity-based)                 │
+│  • temporal_patterns (time-based aggregations)              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Tech Stack
+
+- **Apache Spark 3.5.3**: Distributed data processing
+- **Delta Lake**: ACID transactions, versioning, time travel
+- **Docker**: Containerized deployment
+- **Python 3.8**: ETL logic
+- **Schedule**: Automated data collection every 6 hours
 
 ---
 
@@ -59,90 +182,251 @@ Start-ScheduledTask -TaskName "SpotifyDataIngestion"
 
 ```
 spotify/
-├── run_ingestion.py          # 🚀 Main script
-├── preflight_check.py         # ✅ Validation
-├── schedule_ingestion.ps1     # ⏰ Scheduler
-├── run_manual.bat            # 🎯 Quick test
-│
-├── clients/                   # API clients
-│   ├── auth/                 # OAuth & tokens
-│   └── spotify_api.py        # Spotify wrapper
-│
-├── config/                    # Configuration
-│   └── settings.py           # Env-based config
-│
-├── loaders/                   # Data loaders
-├── mappers/                   # Schema mappers
-├── writers/                   # Delta Lake writers
-├── schemas/                   # Data schemas
-└── utils/                     # Utilities
+├── clients/              # API clients
+│   ├── auth/             # Authentication logic
+│   │   └── spotify_auth.py
+│   └── spotify_api.py
+├── config/               # Configuration
+│   └── __init__.py
+├── loaders/              # Data loaders (future)
+├── mappers/              # Data transformers
+│   ├── spotify_mapper.py
+│   └── kaggle_mapper.py
+├── schemas/              # Schema definitions
+│   └── bronze_schemas.py
+├── scripts/              # 🆕 Utility scripts
+│   ├── generate_synthetic_audio_features.py
+│   ├── populate_missing_features.py
+│   └── build_silver_listening_with_features.py
+├── utils/                # Utilities
+│   └── logger.py
+├── writers/              # Delta Lake writers
+│   └── delta_writer.py
+├── data/                 # Data storage
+│   ├── bronze/
+│   ├── silver/
+│   ├── gold/
+│   └── kaggle/
+├── run_ingestion.py      # Main pipeline
+├── scheduler.py          # Automated scheduler
+├── docker-compose.yml    # Docker orchestration
+├── Dockerfile
+├── requirements.txt
+└── README.md
 ```
 
 ---
 
-## 🔍 Checking Results
+## 🛠️ Common Operations
+
+### View Data
 
 ```bash
-# View logs
-Get-Content data\logs\ingestion_*.log -Tail 50
+# Enter container shell
+docker exec -it spotify-scheduler /bin/bash
 
-# Query data (Python)
-from pyspark.sql import SparkSession
-spark = SparkSession.builder.appName("View").getOrCreate()
-df = spark.read.format("delta").load("data/bronze/listening_history_bronze")
-df.show()
+# Query Delta tables with PySpark
+pyspark --packages io.delta:delta-core_2.12:2.4.0
+
+# In PySpark:
+df = spark.read.format('delta').load('/app/data/bronze/listening_history_bronze')
+df.show(10)
+df.printSchema()
 ```
 
----
-
-## 🐛 Troubleshooting
-
-**"Module not found: pyspark"**
-```bash
-pip install pyspark delta-spark
-```
-
-**"Java not found"**
-- Download Java 11/17: https://adoptium.net/
-
-**"Spotify authentication failed"**
-1. Check CLIENT_ID/CLIENT_SECRET in `.env`
-2. Verify REDIRECT_URI: `http://127.0.0.1:8888/callback`
-3. Run manually: `python run_ingestion.py`
-
-**"No data fetched"**
-- Ensure recent Spotify listening history
-- Check Spotify privacy settings
-
----
-
-## ✅ Project Status
-
-**Complete (70%):**
-- ✅ Bronze layer (data ingestion)
-- ✅ Automated scheduling
-- ✅ Audio features extraction
-
-**To Build:**
-- ⏳ Silver layer (transformations)
-- ⏳ Gold layer (analytics)
-- ⏳ ML models (mood clustering)
-
-**See PROJECT_ASSESSMENT.md for detailed roadmap.**
-
----
-
-## 🚀 You're Ready!
+### Rebuild Pipeline
 
 ```bash
-# 1. Validate
-python preflight_check.py
+# Stop scheduler
+docker-compose down
 
-# 2. Test
-python run_ingestion.py
+# Rebuild with no cache
+docker-compose build --no-cache
 
-# 3. Schedule
-.\schedule_ingestion.ps1
+# Restart
+docker-compose up -d spotify-scheduler
 ```
 
-Done! Pipeline runs at 11 PM daily. 🎉
+### Manual Ingestion
+
+```bash
+# One-time run
+docker-compose run --rm spotify-pipeline python3 run_ingestion.py
+```
+
+### Build Silver Layer
+
+```bash
+docker-compose run --rm spotify-pipeline \
+  python3 scripts/build_silver_listening_with_features.py \
+  --history-path /app/data/bronze/listening_history_bronze \
+  --real-features-path /app/data/bronze/my_tracks_features_bronze \
+  --synthetic-features-path /app/data/bronze/my_tracks_features_bronze_synthetic \
+  --kaggle-features-path /app/data/bronze/kaggle_tracks_bronze \
+  --out-path /app/data/silver/listening_with_features
+```
+
+### Check Logs
+
+```bash
+# View scheduler logs
+docker logs -f spotify-scheduler
+
+# View last 100 lines
+docker logs --tail 100 spotify-scheduler
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Issue: "403 Forbidden" on Audio Features
+
+**Status**: Known issue with Spotify API permissions
+
+**Solution**: Synthetic features system automatically fills the gap
+- Set `ALLOW_SYNTHETIC=true` (default)
+- Real features will be preferred when API is fixed
+- See [FIX_403_AUDIO_FEATURES.md](./FIX_403_AUDIO_FEATURES.md) for permanent fix
+
+### Issue: "No tracks found in listening history"
+
+**Cause**: Need to listen to music first or re-authenticate
+
+**Solution**:
+```bash
+# Delete old token
+rm data/.spotify_tokens.json
+
+# Re-run pipeline to re-authenticate
+docker-compose run --rm spotify-pipeline python3 run_ingestion.py
+```
+
+### Issue: "Kaggle dataset not found"
+
+**Solution**: Download the dataset:
+1. Get it from [Kaggle Spotify Dataset](https://www.kaggle.com/datasets/maharshipandya/-spotify-tracks-dataset)
+2. Place CSV at: `data/kaggle/dataset.csv`
+3. Re-run pipeline
+
+### Issue: "Container keeps restarting"
+
+**Check logs**:
+```bash
+docker logs --tail 50 spotify-scheduler
+```
+
+**Common causes**:
+- Missing `.env` file
+- Invalid Spotify credentials
+- Port 8888 already in use
+
+---
+
+## 📚 Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [README.md](./README.md) | This file - overview and quick start |
+| [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) | Detailed deployment instructions |
+| [DATA_STATUS_EXPLAINED.md](./DATA_STATUS_EXPLAINED.md) | Current data status and structure |
+| [FIX_403_AUDIO_FEATURES.md](./FIX_403_AUDIO_FEATURES.md) | Permanent fix for API 403 error |
+| [SYNTHETIC_FEATURES_GUIDE.md](./SYNTHETIC_FEATURES_GUIDE.md) | 🆕 Complete synthetic features documentation |
+
+---
+
+## 🎓 Academic Project Context
+
+This pipeline supports a **music-based mental wellbeing analysis** academic project:
+
+### Research Questions
+1. How do listening patterns correlate with mood throughout the day?
+2. Can audio features predict mental wellbeing indicators?
+3. What track characteristics are associated with positive vs negative moods?
+
+### Analytics Types (5 Required)
+1. **Descriptive**: Listening patterns by time/day
+2. **Diagnostic**: Why certain moods occur at certain times
+3. **Predictive**: Forecast mood based on listening behavior
+4. **Prescriptive**: Recommend tracks to improve wellbeing
+5. **Cognitive**: Cluster mood states using audio features
+
+### Data Quality Note
+Due to Spotify API limitations, synthetic features supplement real data for development.
+Coverage: ~85% synthetic (testing), ~15% Kaggle (authentic). See [SYNTHETIC_FEATURES_GUIDE.md](./SYNTHETIC_FEATURES_GUIDE.md).
+
+---
+
+## 🚦 Current Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Bronze Layer** | ✅ Complete | All 4 tables ingesting successfully |
+| **Listening History** | ✅ Working | 1,000 events per run |
+| **Track Features (Real)** | ⚠️ 403 Error | Spotify API permission issue |
+| **Synthetic Features** | ✅ Ready | Automatic generation enabled |
+| **Kaggle Dataset** | ✅ Loaded | 114,001 tracks |
+| **Automated Scheduler** | ✅ Running | Every 6 hours |
+| **Silver Layer** | ✅ Ready | Scripts available |
+| **Gold Layer** | 🔄 Planned | Next phase |
+
+---
+
+## 🎯 Next Steps
+
+### Immediate (Bronze Complete ✅)
+- [x] Bronze ingestion working
+- [x] Schemas match requirements
+- [x] Automated scheduling setup
+- [x] Synthetic features system implemented
+
+### Next Phase - Silver Layer
+- [ ] Run Silver layer builder
+- [ ] Validate feature coverage
+- [ ] Add data quality checks
+
+### Next Phase - Gold Layer
+- [ ] Implement mood clustering (K-means)
+- [ ] Calculate wellbeing indicators
+- [ ] Generate track recommendations
+- [ ] Create temporal analytics
+
+### Visualization
+- [ ] Set up Apache Superset
+- [ ] Create dashboards
+- [ ] Implement 5 analytics types
+
+---
+
+## 🤝 Contributing
+
+This is an academic project, but suggestions welcome:
+1. Open an issue with your suggestion
+2. Explain the use case
+3. Provide example code if possible
+
+---
+
+## 📄 License
+
+MIT License - See LICENSE file
+
+---
+
+## 🙏 Acknowledgments
+
+- **Spotify Web API**: For providing rich music data
+- **Kaggle**: For the Spotify Tracks Dataset (114K tracks)
+- **Apache Spark & Delta Lake**: For robust data processing
+- **Docker**: For reproducible environments
+
+---
+
+## 📧 Contact
+
+For questions about this academic project, please open an issue.
+
+---
+
+**Last Updated**: 2025-10-23
+**Version**: 1.0.0 (Bronze Layer Complete + Synthetic Features)

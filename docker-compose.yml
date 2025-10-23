@@ -21,6 +21,7 @@ services:
       - SPARK_EXECUTOR_MEMORY=4g
       - PYSPARK_PYTHON=python3
       - PYSPARK_DRIVER_PYTHON=python3
+      - ALLOW_SYNTHETIC=${ALLOW_SYNTHETIC:-true}
     volumes:
       - ./data:/app/data
       - ./clients:/app/clients
@@ -28,6 +29,7 @@ services:
       - ./loaders:/app/loaders
       - ./mappers:/app/mappers
       - ./schemas:/app/schemas
+      - ./scripts:/app/scripts
       - ./utils:/app/utils
       - ./writers:/app/writers
       - ./run_ingestion.py:/app/run_ingestion.py
@@ -57,6 +59,7 @@ services:
       - SPARK_EXECUTOR_MEMORY=4g
       - PYSPARK_PYTHON=python3
       - PYSPARK_DRIVER_PYTHON=python3
+      - ALLOW_SYNTHETIC=${ALLOW_SYNTHETIC:-true}
     volumes:
       - ./data:/app/data
       - ./clients:/app/clients
@@ -64,6 +67,7 @@ services:
       - ./loaders:/app/loaders
       - ./mappers:/app/mappers
       - ./schemas:/app/schemas
+      - ./scripts:/app/scripts
       - ./utils:/app/utils
       - ./writers:/app/writers
       - ./run_ingestion.py:/app/run_ingestion.py
