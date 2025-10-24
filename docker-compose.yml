@@ -101,7 +101,7 @@ services:
   # Trino (formerly Presto) - Distributed SQL query engine
   # Queries Delta Lake tables directly without copying data
   # RECOMMENDED: Use Trino in Superset instead of PostgreSQL for analytics
-  # Connection: trino://trino:8080/delta/default
+  # Connection: trino://admin@trino:8080/delta/default
 
   trino:
     image: trinodb/trino:435

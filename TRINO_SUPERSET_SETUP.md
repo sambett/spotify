@@ -38,8 +38,10 @@ Open your browser and go to: **http://localhost:8088**
 
 **SQLALCHEMY URI:**
 ```
-trino://trino:8080/delta/default
+trino://admin@trino:8080/delta/default
 ```
+
+**Important:** Include `admin@` for authentication (username required, no password needed)
 
 **Display Name:**
 ```
