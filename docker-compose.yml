@@ -49,6 +49,11 @@ services:
     memswap_limit: 6g
 
   # One-time manual ingestion service
+  # Use this for: manual data ingestion, building analytics, running ML models
+  # Examples:
+  #   docker-compose run --rm spotify-pipeline python3 run_ingestion.py
+  #   docker-compose run --rm spotify-pipeline python3 gold/predictive/build_predictive_models.py
+  #   docker-compose run --rm spotify-pipeline python3 scripts/sync_gold_to_postgres.py
   spotify-pipeline:
     build:
       context: .
@@ -93,6 +98,10 @@ services:
   # ============================================================================
   # QUERY LAYER (Trino for SQL-based analytics)
   # ============================================================================
+  # Trino (formerly Presto) - Distributed SQL query engine
+  # Queries Delta Lake tables directly without copying data
+  # RECOMMENDED: Use Trino in Superset instead of PostgreSQL for analytics
+  # Connection: trino://trino:8080/delta/default
 
   trino:
     image: trinodb/trino:435
@@ -118,6 +127,9 @@ services:
   # ============================================================================
 
   # PostgreSQL for Superset metadata
+  # PRIMARY USE: Stores Superset's own data (dashboards, users, charts config)
+  # SECONDARY USE: Optional - can sync Gold tables here via sync_gold_to_postgres.py
+  # NOTE: For analytics, prefer querying Trino (queries Delta Lake directly)
   postgres:
     image: postgres:15
     container_name: superset-postgres
@@ -136,6 +148,7 @@ services:
       retries: 5
 
   # Redis for Superset caching
+  # Speeds up dashboard queries by caching results
   redis:
     image: redis:7-alpine
     container_name: superset-redis
@@ -184,28 +197,9 @@ services:
     mem_limit: 4g
 
   # ============================================================================
-  # MACHINE LEARNING (Optional: Separate ML container)
+  # NOTE: ml-service removed - ML models run via spotify-pipeline container
+  # Use: docker-compose run --rm spotify-pipeline python3 gold/predictive/build_predictive_models.py
   # ============================================================================
-
-  ml-service:
-    build:
-      context: .
-      dockerfile: Dockerfile.ml
-    container_name: ml-service
-    environment:
-      - BRONZE_PATH=/app/data/bronze
-      - SILVER_PATH=/app/data/silver
-      - GOLD_PATH=/app/data/gold
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ./data:/app/data
-      - ./gold:/app/gold
-      - ./ml_models:/app/ml_models
-    networks:
-      - spotify-network
-    mem_limit: 4g
-    profiles:
-      - ml  # Only runs when explicitly called
 
 volumes:
   postgres-data:
