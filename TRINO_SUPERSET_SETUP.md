@@ -281,6 +281,33 @@ ORDER BY hour_of_day
 
 ## Troubleshooting
 
+### 401 Authentication Error
+
+If you see: `error 401: b'Basic authentication or X-Trino-Original-User must be sent'`
+
+**Solution:** Make sure your connection string includes the username:
+```
+trino://admin@trino:8080/delta/default
+```
+
+**NOT:**
+```
+trino://trino:8080/delta/default  ❌ Missing username!
+```
+
+### Alternative Connection Strings
+
+If `admin` doesn't work, try:
+
+```
+trino://trino@trino:8080/delta/default
+```
+
+Or with explicit parameters:
+```
+trino://admin@trino:8080/delta/default?http_scheme=http&auth=None
+```
+
 ### Trino connection fails
 
 **Check Trino status:**
@@ -294,6 +321,21 @@ docker logs trino --tail 50
 docker-compose restart trino
 ```
 
+**Wait for Trino to be ready (30 seconds):**
+```bash
+docker logs trino --follow
+# Wait for "SERVER STARTED" message
+```
+
+### Connection Refused
+
+**Test network connectivity from Superset:**
+```bash
+docker exec superset curl http://trino:8080/v1/info
+```
+
+Should return JSON with Trino version info.
+
 ### Tables not showing up
 
 **Verify Delta tables exist:**
@@ -306,6 +348,16 @@ Then run:
 SHOW TABLES;
 ```
 
+**Check available catalogs:**
+```sql
+SHOW CATALOGS;
+```
+
+**Check schemas in delta catalog:**
+```sql
+SHOW SCHEMAS FROM delta;
+```
+
 ### Query timeout
 
 Increase timeout in Superset:
@@ -313,6 +365,18 @@ Increase timeout in Superset:
 2. Edit Trino connection
 3. **Advanced** → **SQL Lab** section
 4. Increase **Query timeout** to 300 seconds
+
+### Check Logs for Errors
+
+**Trino logs:**
+```bash
+docker logs trino --tail 100
+```
+
+**Superset logs:**
+```bash
+docker logs superset --tail 100
+```
 
 ---
 

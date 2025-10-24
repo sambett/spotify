@@ -21,11 +21,8 @@ data/logs/
 data/trino/
 data/kaggle/*.csv
 
-# Superset
-superset/superset.db
-superset/superset.db-*
-superset/*.db
-superset/*.db-*
+# Superset (runtime generated data)
+superset/
 
 # Docker volumes
 postgres-data/
