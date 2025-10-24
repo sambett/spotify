@@ -539,12 +539,14 @@ This pipeline supports a **music-based mental wellbeing analysis** academic proj
 | Document | Purpose |
 |----------|---------|
 | [README.md](./README.md) | This file - complete overview |
-| [TRINO_SUPERSET_SETUP.md](./TRINO_SUPERSET_SETUP.md) | **NEW!** Step-by-step Trino + Superset setup |
-| [SUPERSET_QUERIES.md](./SUPERSET_QUERIES.md) | **NEW!** 21 ready-to-use SQL queries for charts |
-| [ARCHITECTURE_FIXES_SUMMARY.md](./ARCHITECTURE_FIXES_SUMMARY.md) | **NEW!** v2.1.0 architecture corrections |
+| [RUN_PIPELINE_STEPS.md](./RUN_PIPELINE_STEPS.md) | **⭐ MANUAL EXECUTION GUIDE** - Step-by-step verification |
+| [run_all_stages.sh](./run_all_stages.sh) | Shell script for manual pipeline execution |
+| [AUTOMATION_STATUS_REPORT.md](./AUTOMATION_STATUS_REPORT.md) | Automation status and architecture analysis |
+| [TRINO_SUPERSET_SETUP.md](./TRINO_SUPERSET_SETUP.md) | Step-by-step Trino + Superset setup |
+| [SUPERSET_QUERIES.md](./SUPERSET_QUERIES.md) | 21 ready-to-use SQL queries for charts |
+| [ARCHITECTURE_FIXES_SUMMARY.md](./ARCHITECTURE_FIXES_SUMMARY.md) | v2.1.0 architecture corrections |
 | [COMPLETE_ARCHITECTURE_GUIDE.md](./COMPLETE_ARCHITECTURE_GUIDE.md) | Detailed architecture documentation |
 | [SYNTHETIC_FEATURES_GUIDE.md](./SYNTHETIC_FEATURES_GUIDE.md) | Synthetic features documentation |
-| [SUPERSET_SETUP_GUIDE.md](./SUPERSET_SETUP_GUIDE.md) | Original Superset setup guide |
 
 ---
 
