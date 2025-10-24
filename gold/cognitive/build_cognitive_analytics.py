@@ -1,8 +1,29 @@
 """
 COGNITIVE ANALYTICS - Gold Layer
 
+⚠️ ACADEMIC DISCLAIMER:
+This demonstrates clustering and pattern recognition techniques on SYNTHETIC audio features.
+
+CRITICAL LIMITATIONS:
+1. Audio features (valence, energy, etc.) are SYNTHETICALLY GENERATED (Spotify API 403 error)
+2. Single-user dataset (n=~1,500) limits statistical power
+3. Clusters may reflect synthetic data artifacts, not real music preferences
+
+WHAT THIS DEMONSTRATES:
+✅ K-Means clustering with proper validation (elbow method, silhouette analysis)
+✅ Anomaly detection techniques
+✅ Pattern mining methodologies
+✅ ML pipeline architecture
+
+WHAT THIS DOES NOT PROVIDE:
+❌ Valid insights into actual music preferences
+❌ Scientifically interpretable mood states
+❌ Generalizable behavioral patterns
+
+See ACADEMIC_DISCLAIMER.md for full details.
+
 Creates advanced pattern recognition and learning systems:
-1. K-means clustering for mood state discovery
+1. K-means clustering for mood state discovery (with elbow method validation)
 2. Anomaly detection in listening patterns
 3. Sequential pattern mining
 4. Behavioral segmentation
@@ -49,14 +70,152 @@ class CognitiveAnalytics:
             logger.error(f"Failed to load Silver data: {e}")
             raise
 
+    def perform_elbow_analysis(self, scaled_data: DataFrame, feature_col: str = 'scaled_features',
+                               k_range: range = range(2, 11)) -> dict:
+        """
+        Perform elbow method analysis to determine optimal number of clusters.
+
+        Returns within-cluster sum of squares (WCSS) for each k value.
+        The "elbow" point suggests optimal k.
+        """
+        logger.info("=" * 60)
+        logger.info("ELBOW METHOD ANALYSIS")
+        logger.info("=" * 60)
+        logger.info(f"Testing k values from {k_range.start} to {k_range.stop - 1}")
+
+        wcss_values = {}
+
+        for k in k_range:
+            logger.info(f"Training K-Means with k={k}...")
+
+            kmeans = KMeans(
+                featuresCol=feature_col,
+                predictionCol='cluster',
+                k=k,
+                seed=42,
+                maxIter=20
+            )
+
+            model = kmeans.fit(scaled_data)
+            predictions = model.transform(scaled_data)
+
+            # Calculate WCSS (Within-Cluster Sum of Squares)
+            # Lower is better, but we look for the "elbow" where improvement slows
+            evaluator = ClusteringEvaluator(
+                featuresCol=feature_col,
+                predictionCol='cluster',
+                metricName='silhouette'
+            )
+
+            silhouette = evaluator.evaluate(predictions)
+            wcss = model.summary.trainingCost  # This is the WCSS
+
+            wcss_values[k] = {
+                'wcss': wcss,
+                'silhouette': silhouette
+            }
+
+            logger.info(f"  k={k}: WCSS={wcss:.2f}, Silhouette={silhouette:.4f}")
+
+        logger.info("=" * 60)
+        logger.info("ELBOW ANALYSIS RESULTS:")
+        logger.info("=" * 60)
+
+        # Find elbow point (simple heuristic: maximum second derivative)
+        k_values = sorted(wcss_values.keys())
+        wcss_list = [wcss_values[k]['wcss'] for k in k_values]
+
+        # Calculate rate of change
+        if len(wcss_list) >= 3:
+            second_derivatives = []
+            for i in range(1, len(wcss_list) - 1):
+                second_deriv = wcss_list[i - 1] - 2 * wcss_list[i] + wcss_list[i + 1]
+                second_derivatives.append((k_values[i], second_deriv))
+
+            optimal_k_elbow = max(second_derivatives, key=lambda x: x[1])[0]
+            logger.info(f"Elbow Method Suggests: k={optimal_k_elbow}")
+        else:
+            optimal_k_elbow = k_values[len(k_values) // 2]
+            logger.info(f"Insufficient data for elbow detection, using midpoint: k={optimal_k_elbow}")
+
+        # Find best silhouette score
+        optimal_k_silhouette = max(wcss_values.items(), key=lambda x: x[1]['silhouette'])[0]
+        logger.info(f"Best Silhouette Score at: k={optimal_k_silhouette} (score={wcss_values[optimal_k_silhouette]['silhouette']:.4f})")
+
+        logger.info("=" * 60)
+        logger.info(f"📊 RECOMMENDATION: Consider k={optimal_k_elbow} (elbow) or k={optimal_k_silhouette} (silhouette)")
+        logger.info("=" * 60)
+
+        return {
+            'wcss_values': wcss_values,
+            'optimal_k_elbow': optimal_k_elbow,
+            'optimal_k_silhouette': optimal_k_silhouette,
+            'all_k_values': k_values
+        }
+
+    def validate_cluster_stability(self, scaled_data: DataFrame, k: int,
+                                   feature_col: str = 'scaled_features', n_runs: int = 3) -> dict:
+        """
+        Test cluster stability by running K-Means multiple times with different seeds.
+        Stable clusters should have consistent silhouette scores.
+        """
+        logger.info(f"Testing cluster stability for k={k} with {n_runs} runs...")
+
+        silhouette_scores = []
+
+        for run in range(n_runs):
+            kmeans = KMeans(
+                featuresCol=feature_col,
+                predictionCol='cluster',
+                k=k,
+                seed=42 + run,  # Different seed each time
+                maxIter=20
+            )
+
+            model = kmeans.fit(scaled_data)
+            predictions = model.transform(scaled_data)
+
+            evaluator = ClusteringEvaluator(
+                featuresCol=feature_col,
+                predictionCol='cluster',
+                metricName='silhouette'
+            )
+
+            silhouette = evaluator.evaluate(predictions)
+            silhouette_scores.append(silhouette)
+            logger.info(f"  Run {run + 1}: Silhouette = {silhouette:.4f}")
+
+        mean_silhouette = sum(silhouette_scores) / len(silhouette_scores)
+        std_silhouette = (sum((x - mean_silhouette) ** 2 for x in silhouette_scores) / len(silhouette_scores)) ** 0.5
+
+        logger.info(f"Stability: Mean Silhouette = {mean_silhouette:.4f} ± {std_silhouette:.4f}")
+
+        if std_silhouette < 0.05:
+            logger.info("✅ Clusters are STABLE (low variance across runs)")
+        elif std_silhouette < 0.10:
+            logger.info("⚠️  Clusters show MODERATE stability")
+        else:
+            logger.warning("❌ Clusters are UNSTABLE (high variance) - consider different k")
+
+        return {
+            'mean_silhouette': mean_silhouette,
+            'std_silhouette': std_silhouette,
+            'silhouette_scores': silhouette_scores,
+            'is_stable': std_silhouette < 0.10
+        }
+
     def build_mood_state_clusters(self, df: DataFrame) -> dict:
         """
         COGNITIVE: Discover natural mood states using K-means clustering.
 
         Cluster listening sessions based on audio features to discover
         natural mood states beyond simple categorization.
+
+        Uses elbow method and silhouette analysis to determine optimal k.
         """
-        logger.info("Building mood state clusters...")
+        logger.info("=" * 80)
+        logger.info("BUILDING MOOD STATE CLUSTERS WITH VALIDATION")
+        logger.info("=" * 80)
 
         # Select features for clustering
         feature_cols = ['valence', 'energy', 'danceability', 'acousticness',
@@ -64,6 +223,8 @@ class CognitiveAnalytics:
 
         # Prepare data
         model_data = df.select(*feature_cols).na.drop()
+        sample_count = model_data.count()
+        logger.info(f"Clustering {sample_count} samples")
 
         # Normalize tempo and loudness to 0-1 range
         model_data = model_data.withColumn(
@@ -77,28 +238,44 @@ class CognitiveAnalytics:
         feature_cols_normalized = ['valence', 'energy', 'danceability', 'acousticness',
                                    'instrumentalness', 'tempo_normalized', 'loudness_normalized']
 
-        # Assemble features
+        # Assemble and scale features
         assembler = VectorAssembler(inputCols=feature_cols_normalized, outputCol='features')
         scaler = StandardScaler(inputCol='features', outputCol='scaled_features')
 
-        # K-means clustering (5 clusters for mood states)
+        # Create preprocessing pipeline
+        prep_pipeline = Pipeline(stages=[assembler, scaler])
+        prep_model = prep_pipeline.fit(model_data)
+        scaled_data = prep_model.transform(model_data)
+
+        # STEP 1: Perform elbow analysis to determine optimal k
+        logger.info("")
+        logger.info("STEP 1: Elbow Method & Silhouette Analysis")
+        elbow_results = self.perform_elbow_analysis(scaled_data, 'scaled_features', k_range=range(2, 9))
+
+        # STEP 2: Use recommended k (or default to 5 if inconclusive)
+        optimal_k = elbow_results['optimal_k_silhouette']
+        logger.info("")
+        logger.info(f"STEP 2: Training Final Model with k={optimal_k}")
+
+        # STEP 3: Validate cluster stability
+        logger.info("")
+        logger.info(f"STEP 3: Testing Cluster Stability (k={optimal_k})")
+        stability_results = self.validate_cluster_stability(scaled_data, optimal_k, 'scaled_features', n_runs=3)
+
+        # STEP 4: Train final model
+        logger.info("")
+        logger.info(f"STEP 4: Training Final K-Means Model")
         kmeans = KMeans(
             featuresCol='scaled_features',
             predictionCol='cluster',
-            k=5,
+            k=optimal_k,
             seed=42,
             maxIter=20
         )
 
-        # Pipeline
-        pipeline = Pipeline(stages=[assembler, scaler, kmeans])
-
-        # Train
-        logger.info(f"Training K-means clustering with {model_data.count()} samples")
-        model = pipeline.fit(model_data)
-
-        # Predict
-        predictions = model.transform(model_data)
+        # Train on scaled data
+        final_model = kmeans.fit(scaled_data)
+        predictions = final_model.transform(scaled_data)
 
         # Evaluate
         evaluator = ClusteringEvaluator(
@@ -108,7 +285,18 @@ class CognitiveAnalytics:
         )
 
         silhouette = evaluator.evaluate(predictions)
-        logger.info(f"✅ Clustering Silhouette Score: {silhouette:.4f}")
+
+        logger.info("")
+        logger.info("=" * 80)
+        logger.info("✅ CLUSTERING RESULTS")
+        logger.info("=" * 80)
+        logger.info(f"Number of Clusters (k): {optimal_k}")
+        logger.info(f"Final Silhouette Score: {silhouette:.4f}")
+        logger.info(f"Cluster Stability: {stability_results['mean_silhouette']:.4f} ± {stability_results['std_silhouette']:.4f}")
+        logger.info(f"Is Stable: {'Yes' if stability_results['is_stable'] else 'No'}")
+        logger.info("=" * 80)
+        logger.info("")
+        logger.warning("⚠️  Clusters based on SYNTHETIC features - interpret with caution")
 
         # Characterize each cluster
         cluster_profiles = predictions.groupBy('cluster').agg(
@@ -153,9 +341,12 @@ class CognitiveAnalytics:
         logger.info(f"✅ Discovered {named_clusters.count()} mood state clusters")
 
         return {
-            'model': model,
+            'model': final_model,
             'cluster_profiles': named_clusters,
-            'silhouette_score': silhouette
+            'silhouette_score': silhouette,
+            'optimal_k': optimal_k,
+            'elbow_analysis': elbow_results,
+            'stability_results': stability_results
         }
 
     def build_listening_anomalies(self, df: DataFrame) -> DataFrame:

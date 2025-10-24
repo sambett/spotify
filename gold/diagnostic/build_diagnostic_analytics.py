@@ -1,6 +1,28 @@
 """
 DIAGNOSTIC ANALYTICS - Gold Layer
 
+⚠️ ACADEMIC DISCLAIMER:
+Diagnostic analysis on SYNTHETIC audio features - causality claims are NOT valid.
+
+CRITICAL LIMITATIONS:
+1. Audio features are SYNTHETICALLY GENERATED (Spotify API 403 error)
+2. Single-user dataset (n=~1,500) prevents causal inference
+3. Correlations on synthetic data do not represent real relationships
+4. Cannot establish "why" with anecdotal single-user data
+
+WHAT THIS DEMONSTRATES:
+✅ Diagnostic analytics methodology (correlation analysis)
+✅ Time-series analysis techniques
+✅ Feature relationship exploration
+✅ Root cause analysis frameworks
+
+WHAT THIS DOES NOT PROVIDE:
+❌ Valid causal explanations for listening behavior
+❌ Statistically significant correlations
+❌ Generalizable behavioral insights
+
+See ACADEMIC_DISCLAIMER.md for full details.
+
 Creates analytical tables that explain WHY patterns occur:
 1. Mood correlations with time of day
 2. Feature correlations (e.g., valence vs energy)

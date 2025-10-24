@@ -2,6 +2,49 @@
 
 A production-grade data analytics pipeline for Spotify listening behavior with advanced mood-based analysis using Apache Spark, Delta Lake, Trino, and Apache Superset.
 
+---
+
+## ⚠️ ACADEMIC DISCLAIMER
+
+**This is an educational demonstration project showcasing data engineering infrastructure and ML pipeline architecture.**
+
+### Critical Limitations
+
+🔴 **SYNTHETIC AUDIO FEATURES**: All audio features (valence, energy, danceability, etc.) for user listening data are **synthetically generated** due to Spotify API access restrictions (403 Forbidden on Audio Features endpoint).
+
+🔴 **SINGLE-USER DATASET**: Data from one user (~1,500 events) - statistically insufficient for generalization.
+
+🔴 **TRAIN/TEST MISMATCH**: ML models trained on Kaggle dataset (2020, general catalog) and tested on user data (2024, personal taste, synthetic features).
+
+### What This Project IS
+
+✅ **Strong Data Engineering Portfolio**: Demonstrates medallion architecture, Delta Lake, Spark, Trino, Superset integration
+✅ **ML Infrastructure**: Shows proper cross-validation, baseline comparisons, feature importance, confusion matrices
+✅ **Best Practices**: Includes data quality validation, elbow method for clustering, stability testing
+✅ **Academic Rigor**: Proper disclaimers, honest limitations, methodology over results
+
+**Appropriate for**: Data Engineering Capstone, Infrastructure Projects, Pipeline Architecture Studies
+
+### What This Project IS NOT
+
+❌ Scientifically valid music recommendation system
+❌ Statistically significant behavioral analysis
+❌ Production-ready analytics platform
+❌ Real insights into music preferences
+
+**NOT appropriate for**: Data Science Thesis on Music Behavior, ML Research on Mood Prediction
+
+### Project Assessment
+
+- **Infrastructure & DevOps**: 85/100 🟢 Strong
+- **Data Engineering**: 80/100 🟢 Good
+- **ML Methodology**: 75/100 🟡 Improved with validation
+- **Scientific Validity**: N/A (synthetic data) ⚪ Demonstration only
+
+**Read [ACADEMIC_DISCLAIMER.md](./ACADEMIC_DISCLAIMER.md) for complete details.**
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites

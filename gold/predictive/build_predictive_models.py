@@ -1,17 +1,39 @@
 """
 PREDICTIVE ANALYTICS - Gold Layer
 
-CORRECTED APPROACH:
+⚠️ ACADEMIC DISCLAIMER:
+This is a DEMONSTRATION of ML pipeline infrastructure, not scientifically valid predictions.
+
+CRITICAL LIMITATIONS:
+1. Test data uses SYNTHETIC audio features (Spotify API returns 403)
+2. Train/Test distributions differ (Kaggle 2020 catalog vs. User 2024 listening)
+3. Single-user dataset (n=1,504) prevents statistical generalization
+4. Results demonstrate METHODOLOGY, not predictive accuracy
+
+WHAT THIS DEMONSTRATES:
+✅ ML pipeline architecture and model training workflows
+✅ Cross-validation and proper model evaluation techniques
+✅ Feature engineering and data quality handling
+✅ Model persistence and prediction serving patterns
+
+WHAT THIS DOES NOT PROVIDE:
+❌ Scientifically valid music recommendations
+❌ Statistically significant behavioral insights
+❌ Production-ready predictive models
+
+See ACADEMIC_DISCLAIMER.md for full details.
+
+APPROACH:
 - Train on Kaggle dataset (114K tracks with real audio features)
-- Test on user's listening history (1,504 events)
-- This provides proper generalization testing
+- Test on user's listening history (1,504 events with synthetic features)
+- Use cross-validation on training data for honest performance estimates
+- Compare against baseline models
+- Provide feature importance analysis
 
 Creates machine learning models to forecast future patterns:
 1. Mood prediction based on time features
 2. Energy level forecasting
 3. Mood category classification
-
-These tables answer: "What will happen?" and "What are future trends?"
 
 Uses Spark MLlib for scalable ML.
 """
@@ -22,12 +44,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import col, when, rand, abs as spark_abs, hour, dayofweek
+from pyspark.sql.functions import col, when, rand, abs as spark_abs, hour, dayofweek, lit, avg
 from pyspark.ml.feature import VectorAssembler, StandardScaler
 from pyspark.ml.regression import LinearRegression, RandomForestRegressor
 from pyspark.ml.classification import RandomForestClassifier
 from pyspark.ml.evaluation import RegressionEvaluator, MulticlassClassificationEvaluator
+from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
 from pyspark.ml import Pipeline
+import numpy as np
 
 from utils.logger import setup_logger
 
@@ -39,6 +63,210 @@ class PredictiveAnalytics:
 
     def __init__(self, spark: SparkSession):
         self.spark = spark
+
+    def calculate_baseline_regression(self, test_data: DataFrame, label_col: str) -> dict:
+        """
+        Calculate baseline regression metrics (predict mean).
+        This shows what a naive model would achieve.
+        """
+        logger.info(f"Calculating baseline (mean predictor) for {label_col}...")
+
+        # Calculate mean of training label
+        mean_value = test_data.select(avg(col(label_col))).collect()[0][0]
+
+        # Add mean prediction
+        baseline_predictions = test_data.withColumn('prediction', lit(mean_value))
+
+        # Evaluate
+        rmse_eval = RegressionEvaluator(labelCol=label_col, predictionCol='prediction', metricName='rmse')
+        mae_eval = RegressionEvaluator(labelCol=label_col, predictionCol='prediction', metricName='mae')
+        r2_eval = RegressionEvaluator(labelCol=label_col, predictionCol='prediction', metricName='r2')
+
+        baseline_rmse = rmse_eval.evaluate(baseline_predictions)
+        baseline_mae = mae_eval.evaluate(baseline_predictions)
+        baseline_r2 = r2_eval.evaluate(baseline_predictions)
+
+        logger.info(f"   Baseline (Mean): RMSE={baseline_rmse:.4f}, MAE={baseline_mae:.4f}, R²={baseline_r2:.4f}")
+
+        return {
+            'rmse': baseline_rmse,
+            'mae': baseline_mae,
+            'r2': baseline_r2,
+            'method': 'mean_predictor'
+        }
+
+    def calculate_baseline_classification(self, test_data: DataFrame, label_col: str) -> dict:
+        """
+        Calculate baseline classification metrics (predict most frequent class).
+        """
+        logger.info(f"Calculating baseline (majority class) for {label_col}...")
+
+        # Find most frequent class
+        class_counts = test_data.groupBy(label_col).count().collect()
+        most_frequent_class = max(class_counts, key=lambda x: x['count'])[label_col]
+
+        # Add majority class prediction
+        baseline_predictions = test_data.withColumn('prediction', lit(most_frequent_class))
+
+        # Evaluate
+        accuracy_eval = MulticlassClassificationEvaluator(
+            labelCol=label_col, predictionCol='prediction', metricName='accuracy'
+        )
+        f1_eval = MulticlassClassificationEvaluator(
+            labelCol=label_col, predictionCol='prediction', metricName='f1'
+        )
+
+        baseline_accuracy = accuracy_eval.evaluate(baseline_predictions)
+        baseline_f1 = f1_eval.evaluate(baseline_predictions)
+
+        logger.info(f"   Baseline (Majority): Accuracy={baseline_accuracy:.4f}, F1={baseline_f1:.4f}")
+
+        return {
+            'accuracy': baseline_accuracy,
+            'f1': baseline_f1,
+            'method': 'majority_class'
+        }
+
+    def calculate_confusion_matrix(self, predictions: DataFrame, label_col: str = 'mood_label') -> dict:
+        """
+        Calculate confusion matrix for classification model.
+        Returns class distribution and per-class metrics.
+        """
+        logger.info("Calculating confusion matrix and per-class metrics...")
+
+        # Get predictions
+        pred_labels = predictions.select(label_col, 'prediction').collect()
+
+        # Count classes
+        from collections import defaultdict
+        confusion = defaultdict(lambda: defaultdict(int))
+
+        for row in pred_labels:
+            actual = int(row[label_col])
+            predicted = int(row['prediction'])
+            confusion[actual][predicted] += 1
+
+        # Calculate per-class metrics
+        classes = sorted(set([int(row[label_col]) for row in pred_labels]))
+        per_class_metrics = {}
+
+        mood_names = {
+            0: 'Happy_Energetic',
+            1: 'Happy_Calm',
+            2: 'Sad_Energetic',
+            3: 'Sad_Calm',
+            4: 'Neutral'
+        }
+
+        logger.info("=" * 60)
+        logger.info("CONFUSION MATRIX:")
+        logger.info("=" * 60)
+
+        for cls in classes:
+            true_positive = confusion[cls][cls]
+            false_positive = sum(confusion[other][cls] for other in classes if other != cls)
+            false_negative = sum(confusion[cls][other] for other in classes if other != cls)
+
+            precision = true_positive / (true_positive + false_positive) if (true_positive + false_positive) > 0 else 0
+            recall = true_positive / (true_positive + false_negative) if (true_positive + false_negative) > 0 else 0
+            f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+            class_name = mood_names.get(cls, f'Class_{cls}')
+            per_class_metrics[class_name] = {
+                'precision': precision,
+                'recall': recall,
+                'f1': f1,
+                'support': true_positive + false_negative
+            }
+
+            logger.info(f"Class {cls} ({class_name}):")
+            logger.info(f"  Precision: {precision:.3f} | Recall: {recall:.3f} | F1: {f1:.3f} | Support: {true_positive + false_negative}")
+
+        logger.info("=" * 60)
+
+        return {
+            'confusion_matrix': dict(confusion),
+            'per_class_metrics': per_class_metrics
+        }
+
+    def perform_cross_validation(self, train_data: DataFrame, pipeline: Pipeline,
+                                 evaluator: RegressionEvaluator, num_folds: int = 3) -> dict:
+        """
+        Perform k-fold cross-validation on training data.
+        This provides honest performance estimates on the training distribution.
+
+        NOTE: We use 3 folds (not 5 or 10) due to dataset size and Spark overhead.
+        """
+        logger.info(f"Performing {num_folds}-fold cross-validation on training data...")
+        logger.info("⚠️  This estimates performance on KAGGLE distribution, not user distribution")
+
+        # Simple parameter grid (we're not tuning, just validating)
+        paramGrid = ParamGridBuilder().build()
+
+        # Cross-validator
+        cv = CrossValidator(
+            estimator=pipeline,
+            estimatorParamMaps=paramGrid,
+            evaluator=evaluator,
+            numFolds=num_folds,
+            seed=42
+        )
+
+        # Fit with cross-validation
+        cv_model = cv.fit(train_data)
+
+        # Get average metric across folds
+        avg_metric = float(np.mean(cv_model.avgMetrics))
+
+        logger.info(f"   Cross-Validation Average {evaluator.getMetricName().upper()}: {avg_metric:.4f}")
+        logger.info(f"   ✅ This represents expected performance on similar Kaggle-like data")
+
+        return {
+            'cv_metric': avg_metric,
+            'metric_name': evaluator.getMetricName(),
+            'num_folds': num_folds,
+            'model': cv_model.bestModel
+        }
+
+    def extract_feature_importance(self, model, feature_cols: list) -> dict:
+        """
+        Extract feature importance from Random Forest models.
+        Shows which features the model relies on most.
+        """
+        try:
+            # Get the Random Forest model from the pipeline
+            rf_model = None
+            for stage in model.stages:
+                if hasattr(stage, 'featureImportances'):
+                    rf_model = stage
+                    break
+
+            if rf_model is None:
+                logger.warning("Could not extract feature importances (not a tree-based model)")
+                return {}
+
+            importances = rf_model.featureImportances.toArray()
+
+            feature_importance = {
+                feature_cols[i]: float(importances[i])
+                for i in range(len(feature_cols))
+            }
+
+            # Sort by importance
+            sorted_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)
+
+            logger.info("=" * 60)
+            logger.info("FEATURE IMPORTANCE:")
+            logger.info("=" * 60)
+            for feat, importance in sorted_features:
+                logger.info(f"  {feat:20s}: {importance:.4f}")
+            logger.info("=" * 60)
+
+            return feature_importance
+
+        except Exception as e:
+            logger.warning(f"Could not extract feature importance: {e}")
+            return {}
 
     def load_kaggle_training_data(self, bronze_path: str) -> DataFrame:
         """Load Kaggle dataset as TRAINING data (114K tracks with real features)."""
@@ -165,28 +393,58 @@ class PredictiveAnalytics:
         logger.info(f"Training on {train_count} Kaggle tracks")
         logger.info(f"Testing on {test_count} user listening events")
 
-        # Train on Kaggle
-        model = pipeline.fit(train_data)
+        # STEP 1: Calculate baseline on test data
+        logger.info("")
+        logger.info("STEP 1: Baseline Model (Mean Predictor)")
+        baseline_metrics = self.calculate_baseline_regression(test_data, 'valence')
 
-        # Test on user's listening history
-        predictions = model.transform(test_data)
-
-        # Evaluate
+        # STEP 2: Cross-validate on training data (Kaggle)
+        logger.info("")
+        logger.info("STEP 2: Cross-Validation on Training Data (Kaggle)")
         evaluator = RegressionEvaluator(
             labelCol='valence',
             predictionCol='prediction',
             metricName='rmse'
         )
+        cv_results = self.perform_cross_validation(train_data, pipeline, evaluator, num_folds=3)
 
+        # Use the cross-validated model
+        model = cv_results['model']
+
+        # STEP 3: Test on user's listening history
+        logger.info("")
+        logger.info("STEP 3: Testing on User's Listening Data (Synthetic Features)")
+        predictions = model.transform(test_data)
+
+        # Evaluate on test data
         rmse = evaluator.evaluate(predictions)
         mae_evaluator = RegressionEvaluator(labelCol='valence', predictionCol='prediction', metricName='mae')
         mae = mae_evaluator.evaluate(predictions)
         r2_evaluator = RegressionEvaluator(labelCol='valence', predictionCol='prediction', metricName='r2')
         r2 = r2_evaluator.evaluate(predictions)
 
+        # STEP 4: Extract feature importance
+        logger.info("")
+        logger.info("STEP 4: Feature Importance Analysis")
+        feature_importance = self.extract_feature_importance(model, feature_cols_final)
+
+        # Summary
+        logger.info("")
         logger.info("=" * 80)
-        logger.info(f"✅ Mood Prediction Model (Kaggle→User)")
-        logger.info(f"   RMSE: {rmse:.4f} | MAE: {mae:.4f} | R²: {r2:.4f}")
+        logger.info("✅ MOOD PREDICTION MODEL RESULTS")
+        logger.info("=" * 80)
+        logger.info("Training Data: Kaggle (114K tracks, real features)")
+        logger.info(f"  Cross-Val RMSE: {cv_results['cv_metric']:.4f} (on Kaggle distribution)")
+        logger.info("")
+        logger.info("Test Data: User Listening (1.5K events, SYNTHETIC features)")
+        logger.info(f"  Baseline RMSE:  {baseline_metrics['rmse']:.4f} (mean predictor)")
+        logger.info(f"  Model RMSE:     {rmse:.4f}")
+        logger.info(f"  Model MAE:      {mae:.4f}")
+        logger.info(f"  Model R²:       {r2:.4f}")
+        logger.info("")
+        if r2 < 0:
+            logger.warning("⚠️  NEGATIVE R²: Model performs worse than baseline on test distribution")
+            logger.warning("   This is EXPECTED due to train/test distribution mismatch + synthetic features")
         logger.info("=" * 80)
 
         # Save predictions on user's listening data
@@ -198,14 +456,18 @@ class PredictiveAnalytics:
             'model': model,
             'predictions': prediction_results,
             'metrics': {
-                'rmse': rmse,
-                'mae': mae,
-                'r2': r2,
+                'test_rmse': rmse,
+                'test_mae': mae,
+                'test_r2': r2,
+                'cv_rmse': cv_results['cv_metric'],
+                'baseline_rmse': baseline_metrics['rmse'],
+                'baseline_r2': baseline_metrics['r2'],
                 'train_size': train_count,
                 'test_size': test_count
             },
+            'feature_importance': feature_importance,
             'model_type': 'RandomForestRegressor',
-            'training_approach': 'Kaggle_to_User'
+            'training_approach': 'Kaggle_to_User_with_CrossVal'
         }
 
     def build_energy_forecast_model(self, train_df: DataFrame, test_df: DataFrame) -> dict:
@@ -261,23 +523,49 @@ class PredictiveAnalytics:
         logger.info(f"Training on {train_count} Kaggle tracks")
         logger.info(f"Testing on {test_count} user listening events")
 
-        # Train on Kaggle
-        model = pipeline.fit(train_data)
+        # STEP 1: Calculate baseline on test data
+        logger.info("")
+        logger.info("STEP 1: Baseline Model (Mean Predictor)")
+        baseline_metrics = self.calculate_baseline_regression(test_data, 'energy')
 
-        # Test on user's listening history
+        # STEP 2: Cross-validate on training data (Kaggle)
+        logger.info("")
+        logger.info("STEP 2: Cross-Validation on Training Data (Kaggle)")
+        evaluator = RegressionEvaluator(labelCol='energy', predictionCol='prediction', metricName='rmse')
+        cv_results = self.perform_cross_validation(train_data, pipeline, evaluator, num_folds=3)
+
+        # Use the cross-validated model
+        model = cv_results['model']
+
+        # STEP 3: Test on user's listening history
+        logger.info("")
+        logger.info("STEP 3: Testing on User's Listening Data (Synthetic Features)")
         predictions = model.transform(test_data)
 
         # Evaluate
-        evaluator = RegressionEvaluator(labelCol='energy', predictionCol='prediction', metricName='rmse')
         rmse = evaluator.evaluate(predictions)
         mae_evaluator = RegressionEvaluator(labelCol='energy', predictionCol='prediction', metricName='mae')
         mae = mae_evaluator.evaluate(predictions)
         r2_evaluator = RegressionEvaluator(labelCol='energy', predictionCol='prediction', metricName='r2')
         r2 = r2_evaluator.evaluate(predictions)
 
+        # Summary
+        logger.info("")
         logger.info("=" * 80)
-        logger.info(f"✅ Energy Forecast Model (Kaggle→User)")
-        logger.info(f"   RMSE: {rmse:.4f} | MAE: {mae:.4f} | R²: {r2:.4f}")
+        logger.info("✅ ENERGY FORECAST MODEL RESULTS")
+        logger.info("=" * 80)
+        logger.info("Training Data: Kaggle (114K tracks, real features)")
+        logger.info(f"  Cross-Val RMSE: {cv_results['cv_metric']:.4f} (on Kaggle distribution)")
+        logger.info("")
+        logger.info("Test Data: User Listening (1.5K events, SYNTHETIC features)")
+        logger.info(f"  Baseline RMSE:  {baseline_metrics['rmse']:.4f} (mean predictor)")
+        logger.info(f"  Model RMSE:     {rmse:.4f}")
+        logger.info(f"  Model MAE:      {mae:.4f}")
+        logger.info(f"  Model R²:       {r2:.4f}")
+        logger.info("")
+        if r2 < 0:
+            logger.warning("⚠️  NEGATIVE R²: Model performs worse than baseline on test distribution")
+            logger.warning("   This is EXPECTED due to train/test distribution mismatch + synthetic features")
         logger.info("=" * 80)
 
         # Save predictions
@@ -289,14 +577,17 @@ class PredictiveAnalytics:
             'model': model,
             'predictions': prediction_results,
             'metrics': {
-                'rmse': rmse,
-                'mae': mae,
-                'r2': r2,
+                'test_rmse': rmse,
+                'test_mae': mae,
+                'test_r2': r2,
+                'cv_rmse': cv_results['cv_metric'],
+                'baseline_rmse': baseline_metrics['rmse'],
+                'baseline_r2': baseline_metrics['r2'],
                 'train_size': train_count,
                 'test_size': test_count
             },
             'model_type': 'LinearRegression',
-            'training_approach': 'Kaggle_to_User'
+            'training_approach': 'Kaggle_to_User_with_CrossVal'
         }
 
     def build_mood_category_classifier(self, train_df: DataFrame, test_df: DataFrame) -> dict:
@@ -369,27 +660,58 @@ class PredictiveAnalytics:
         logger.info(f"Training on {train_count} Kaggle tracks")
         logger.info(f"Testing on {test_count} user listening events")
 
-        # Train on Kaggle
-        model = pipeline.fit(train_data)
+        # STEP 1: Calculate baseline on test data
+        logger.info("")
+        logger.info("STEP 1: Baseline Model (Majority Class)")
+        baseline_metrics = self.calculate_baseline_classification(test_data, 'mood_label')
 
-        # Test on user's listening history
-        predictions = model.transform(test_data)
-
-        # Evaluate
+        # STEP 2: Cross-validate on training data (Kaggle)
+        logger.info("")
+        logger.info("STEP 2: Cross-Validation on Training Data (Kaggle)")
         evaluator = MulticlassClassificationEvaluator(
             labelCol='mood_label',
             predictionCol='prediction',
             metricName='accuracy'
         )
+        cv_results = self.perform_cross_validation(train_data, pipeline, evaluator, num_folds=3)
 
+        # Use the cross-validated model
+        model = cv_results['model']
+
+        # STEP 3: Test on user's listening history
+        logger.info("")
+        logger.info("STEP 3: Testing on User's Listening Data (Synthetic Features)")
+        predictions = model.transform(test_data)
+
+        # Evaluate
         accuracy = evaluator.evaluate(predictions)
-
         f1_evaluator = MulticlassClassificationEvaluator(labelCol='mood_label', predictionCol='prediction', metricName='f1')
         f1 = f1_evaluator.evaluate(predictions)
 
+        # STEP 4: Calculate confusion matrix and per-class metrics
+        logger.info("")
+        logger.info("STEP 4: Confusion Matrix & Per-Class Analysis")
+        confusion_results = self.calculate_confusion_matrix(predictions, 'mood_label')
+
+        # STEP 5: Extract feature importance
+        logger.info("")
+        logger.info("STEP 5: Feature Importance Analysis")
+        feature_importance = self.extract_feature_importance(model, feature_cols)
+
+        # Summary
+        logger.info("")
         logger.info("=" * 80)
-        logger.info(f"✅ Mood Category Classifier (Kaggle→User)")
-        logger.info(f"   Accuracy: {accuracy:.4f} | F1: {f1:.4f}")
+        logger.info("✅ MOOD CATEGORY CLASSIFIER RESULTS")
+        logger.info("=" * 80)
+        logger.info("Training Data: Kaggle (114K tracks, real features)")
+        logger.info(f"  Cross-Val Accuracy: {cv_results['cv_metric']:.4f} (on Kaggle distribution)")
+        logger.info("")
+        logger.info("Test Data: User Listening (1.5K events, SYNTHETIC features)")
+        logger.info(f"  Baseline Accuracy:  {baseline_metrics['accuracy']:.4f} (majority class)")
+        logger.info(f"  Model Accuracy:     {accuracy:.4f}")
+        logger.info(f"  Model F1:           {f1:.4f}")
+        logger.info("")
+        logger.warning("⚠️  Classification on SYNTHETIC features - results demonstrate pipeline only")
         logger.info("=" * 80)
 
         # Save predictions
@@ -401,13 +723,18 @@ class PredictiveAnalytics:
             'model': model,
             'predictions': prediction_results,
             'metrics': {
-                'accuracy': accuracy,
-                'f1': f1,
+                'test_accuracy': accuracy,
+                'test_f1': f1,
+                'cv_accuracy': cv_results['cv_metric'],
+                'baseline_accuracy': baseline_metrics['accuracy'],
+                'baseline_f1': baseline_metrics['f1'],
                 'train_size': train_count,
                 'test_size': test_count
             },
+            'confusion_matrix': confusion_results,
+            'feature_importance': feature_importance,
             'model_type': 'RandomForestClassifier',
-            'training_approach': 'Kaggle_to_User'
+            'training_approach': 'Kaggle_to_User_with_CrossVal'
         }
 
     def write_gold_table(self, df: DataFrame, table_name: str, gold_path: str):

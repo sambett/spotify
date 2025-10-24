@@ -1,6 +1,27 @@
 """
 DESCRIPTIVE ANALYTICS - Gold Layer
 
+⚠️ ACADEMIC DISCLAIMER:
+Descriptive analytics on SYNTHETIC audio features from single-user dataset.
+
+CRITICAL LIMITATIONS:
+1. Audio features are SYNTHETICALLY GENERATED (Spotify API 403 error)
+2. Single-user dataset (n=~1,500) - patterns are anecdotal, not statistical
+3. Describes what happened in the data, but data reflects synthetic randomness
+
+WHAT THIS DEMONSTRATES:
+✅ Descriptive analytics methodology and aggregation techniques
+✅ Time-based pattern analysis
+✅ Data summarization and visualization preparation
+✅ SQL and Spark aggregation proficiency
+
+WHAT THIS DOES NOT PROVIDE:
+❌ Valid insights into actual music preferences
+❌ Statistically significant behavioral patterns
+❌ Generalizable user trends
+
+See ACADEMIC_DISCLAIMER.md for full details.
+
 Creates analytical tables that describe listening patterns:
 1. Listening patterns by time (hour, day, part_of_day)
 2. Top tracks by mood (valence, energy)

@@ -1,6 +1,28 @@
 """
 PRESCRIPTIVE ANALYTICS - Gold Layer
 
+⚠️ ACADEMIC DISCLAIMER:
+Prescriptive recommendations based on SYNTHETIC data - NOT actionable for real use.
+
+CRITICAL LIMITATIONS:
+1. Recommendations based on SYNTHETIC audio features (Spotify API 403 error)
+2. Single-user dataset (n=~1,500) - recommendations not generalizable
+3. Predictions are from models trained on synthetic test data
+4. No A/B testing or validation of recommendation effectiveness
+
+WHAT THIS DEMONSTRATES:
+✅ Prescriptive analytics methodology (recommendation systems)
+✅ Actionable insight generation frameworks
+✅ Personalization algorithms
+✅ Decision support system architecture
+
+WHAT THIS DOES NOT PROVIDE:
+❌ Valid music recommendations for actual use
+❌ Scientifically validated mood improvement strategies
+❌ Production-ready recommendation engine
+
+See ACADEMIC_DISCLAIMER.md for full details.
+
 Creates actionable recommendations based on predictive insights:
 1. Track recommendations for mood improvement
 2. Optimal listening times for different moods
