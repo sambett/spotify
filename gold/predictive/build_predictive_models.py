@@ -45,8 +45,24 @@ class PredictiveAnalytics:
         logger.info(f"Loading Kaggle training data from: {bronze_path}")
         try:
             df = self.spark.read.format('delta').load(f"{bronze_path}/kaggle_tracks_bronze")
-            count = df.count()
-            logger.info(f"✅ Loaded {count} Kaggle tracks for TRAINING")
+            count_before = df.count()
+            logger.info(f"✅ Loaded {count_before} Kaggle tracks (raw)")
+
+            # DATA QUALITY FIX: Remove corrupted rows with out-of-range values
+            # Audio features should be in range [0, 1]
+            logger.info("Cleaning data: removing corrupted rows...")
+            df = df.filter(
+                (col('valence').between(0, 1)) &
+                (col('energy').between(0, 1)) &
+                (col('danceability').between(0, 1)) &
+                (col('acousticness').between(0, 1)) &
+                (col('instrumentalness').between(0, 1)) &
+                (col('tempo').between(40, 250))  # Realistic BPM range
+            )
+
+            count_after = df.count()
+            removed = count_before - count_after
+            logger.info(f"✅ Cleaned data: {count_after} valid rows ({removed} corrupted rows removed)")
 
             # Add synthetic time features for training (since Kaggle doesn't have timestamps)
             # Use random but realistic distributions
