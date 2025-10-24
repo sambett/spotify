@@ -92,14 +92,14 @@ def main():
 
         # GOLD LAYER - PRESCRIPTIVE ANALYTICS
         {
-            'script': str(base_path / 'gold' / 'prescriptive' / 'build_recommendations.py'),
+            'script': str(base_path / 'gold' / 'prescriptive' / 'build_prescriptive_analytics.py'),
             'description': 'Gold Layer: Prescriptive Analytics',
             'timeout': 300
         },
 
         # GOLD LAYER - COGNITIVE ANALYTICS
         {
-            'script': str(base_path / 'gold' / 'cognitive' / 'build_mood_clusters.py'),
+            'script': str(base_path / 'gold' / 'cognitive' / 'build_cognitive_analytics.py'),
             'description': 'Gold Layer: Cognitive Analytics',
             'timeout': 600
         },

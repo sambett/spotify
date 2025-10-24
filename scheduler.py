@@ -15,30 +15,32 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_ingestion():
-    """Execute the ingestion pipeline."""
+def run_full_pipeline():
+    """Execute the complete automated pipeline (Bronze → Silver → Gold)."""
     logger.info("=" * 60)
-    logger.info("Starting scheduled ingestion...")
+    logger.info("Starting scheduled pipeline execution...")
     logger.info("=" * 60)
 
     try:
         result = subprocess.run(
-            ['python3', 'run_ingestion.py'],
+            ['python3', 'run_full_pipeline.py'],
             capture_output=True,
             text=True,
-            timeout=600  # 10 minute timeout
+            timeout=3600  # 60 minute timeout for full pipeline
         )
 
         if result.returncode == 0:
-            logger.info("✅ Ingestion completed successfully")
+            logger.info("✅ Full pipeline completed successfully")
+            logger.info("   Bronze → Silver → Gold → ML Models")
         else:
-            logger.error(f"❌ Ingestion failed with code {result.returncode}")
-            logger.error(result.stderr)
+            logger.error(f"❌ Pipeline failed with code {result.returncode}")
+            if result.stderr:
+                logger.error(result.stderr[-500:])  # Last 500 chars
 
     except subprocess.TimeoutExpired:
-        logger.error("❌ Ingestion timed out after 10 minutes")
+        logger.error("❌ Pipeline timed out after 60 minutes")
     except Exception as e:
-        logger.error(f"❌ Ingestion error: {e}")
+        logger.error(f"❌ Pipeline error: {e}")
 
 
 def main():
@@ -46,17 +48,20 @@ def main():
     logger.info("🕐 Spotify Analytics Scheduler Started")
     logger.info("=" * 60)
     logger.info("Schedule:")
-    logger.info("  - Every 6 hours: Full data ingestion")
+    logger.info("  - Every 6 hours: COMPLETE AUTOMATED PIPELINE")
+    logger.info("    └─ Bronze: Spotify API + Kaggle ingestion")
+    logger.info("    └─ Silver: Data transformation and enrichment")
+    logger.info("    └─ Gold: All 5 analytics types + ML models")
     logger.info("  - Maximizes data collection within Spotify API limits")
     logger.info("=" * 60)
 
-    # Schedule ingestion every 6 hours (4 times per day)
-    # This maximizes data collection without hitting rate limits
-    schedule.every(6).hours.do(run_ingestion)
+    # Schedule FULL PIPELINE every 6 hours (4 times per day)
+    # This ensures all layers are kept up-to-date automatically
+    schedule.every(6).hours.do(run_full_pipeline)
 
     # Run immediately on startup
-    logger.info("Running initial ingestion...")
-    run_ingestion()
+    logger.info("Running initial pipeline execution...")
+    run_full_pipeline()
 
     # Keep running
     while True:
