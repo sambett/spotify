@@ -40,6 +40,7 @@ services:
       - ./utils:/app/utils
       - ./writers:/app/writers
       - ./run_ingestion.py:/app/run_ingestion.py
+      - ./run_full_pipeline.py:/app/run_full_pipeline.py
       - ./scheduler.py:/app/scheduler.py
     ports:
       - "8888:8888"
@@ -86,6 +87,7 @@ services:
       - ./utils:/app/utils
       - ./writers:/app/writers
       - ./run_ingestion.py:/app/run_ingestion.py
+      - ./run_full_pipeline.py:/app/run_full_pipeline.py
     ports:
       - "8888:8888"
     networks:
@@ -110,6 +112,7 @@ services:
       - "8080:8080"
     volumes:
       - ./trino/catalog:/etc/trino/catalog
+      - ./trino/etc/config.properties:/etc/trino/config.properties:ro
       - ./data:/data
     networks:
       - spotify-network
@@ -171,6 +174,8 @@ services:
       - DATABASE_HOST=postgres
       - DATABASE_PASSWORD=superset
       - DATABASE_USER=superset
+      - DATABASE_PORT=5432
+      - SQLALCHEMY_DATABASE_URI=postgresql://superset:superset@postgres:5432/superset
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     ports:

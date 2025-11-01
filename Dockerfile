@@ -9,11 +9,14 @@ USER root
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies and create python symlink
+# Install system dependencies, update CA certificates, and create python symlink
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
     vim \
+    ca-certificates \
+    && apt-get upgrade -y ca-certificates \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && ln -s /usr/bin/python3 /usr/bin/python
 

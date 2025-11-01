@@ -6,6 +6,7 @@ python-dotenv==1.0.1          # Load environment variables from .env file
 # HTTP Requests & API Communication
 requests==2.32.4              # HTTP library for Spotify API calls
 urllib3==2.2.3                # HTTP client (dependency of requests)
+certifi>=2024.2.2             # Root certificates for SSL/TLS verification
 
 # SSL/TLS for HTTPS callback server
 cryptography==43.0.0          # Generate self-signed certificates for localhost HTTPS
