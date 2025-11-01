@@ -1,0 +1,25 @@
+{
+  "writerVersion" : "435",
+  "owner" : "trino",
+  "tableType" : "EXTERNAL_TABLE",
+  "dataColumns" : [ {
+    "name" : "col",
+    "type" : "array<string>",
+    "properties" : { }
+  } ],
+  "partitionColumns" : [ ],
+  "parameters" : {
+    "trino_query_id" : "20251025_114118_00025_fe96u",
+    "location" : "/data/gold/prescriptive/optimal_listening_times",
+    "spark.sql.sources.provider" : "DELTA",
+    "numFiles" : "-1",
+    "totalSize" : "-1",
+    "EXTERNAL" : "TRUE"
+  },
+  "storageFormat" : "SEQUENCEFILE",
+  "serdeParameters" : {
+    "path" : "/data/gold/prescriptive/optimal_listening_times"
+  },
+  "externalLocation" : "/data/gold/prescriptive/optimal_listening_times",
+  "columnStatistics" : { }
+}
